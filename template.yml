@@ -1,0 +1,201 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AWS Lambda function to send cost data notifications to Slack
+
+Parameters:
+  GoogleSpreadsheetId:
+    Type: String
+    Description: The ID of the Google Spreadsheet to read account IDs
+  GoogleSpreadsheetRange:
+    Type: String
+    Default: 'data!A3:Z'
+    Description: The range of the Google Spreadsheet to read account IDs
+  SlackToken:
+    Type: String
+    Description: The Slack API Oauth token
+
+  AthenaBucket:
+    Type: String
+    Description: The S3 bucket for Athena data and query results
+  AthenaDataPrefix:
+    # example: 'cur-exports/daily-cur/data/'
+    Type: String
+    Description: The S3 prefix (folder) for Athena table data (CUR2.0 parquet format, no leading slash)
+  AthenaOutputPrefix:
+    Type: String
+    Default: 'athena/'
+    Description: The S3 prefix (folder) for Athena query results (optional, no leading slash)
+  AthenaLineItemTypes:
+    Type: String
+    Default: 'Usage,DiscountedUsage'
+    Description: Comma-separated list of line item types to include in the Athena table (e.g., Usage, DiscountedUsage, Discount, BundledDiscount, EdpDiscount, SavingsPlanRecurringFee)
+
+  FunctionRoleName:
+    Type: String
+    MinLength: 8
+    MaxLength: 64
+    Description: The name of the IAM role for the Lambda function
+  QueryDaysRange:
+    Type: Number
+    Default: 14
+    MinValue: 7
+    MaxValue: 30
+    Description: The number of days to query cost data (7-30 days)
+  TopNServices:
+    Type: Number
+    Default: 10
+    MinValue: 5
+    MaxValue: 10
+    Description: The number of top services to show in the cost breakdown graph
+  FunctionMemorySize:
+    Type: Number
+    Default: 1024
+    MinValue: 128
+    MaxValue: 10240
+    Description: The amount of memory available to the function during execution (MB)
+  FunctionTimeout:
+    Type: Number
+    Default: 300
+    MinValue: 3
+    MaxValue: 900
+    Description: The amount of time that Lambda allows a function to run before stopping it (seconds)
+  Schedule:
+    Type: String
+    Default: "0 1 * * ? *"
+    Description: The schedule expression in cron format (in UTC). Default is UTC 1:00 (JST 10:00)
+  LogRetentionInDays:
+    Type: Number
+    Default: 90
+    Description: The number of days to retain logs in CloudWatch Logs
+
+Resources:
+  AthenaDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Sub "${AWS::StackName}-${AWS::AccountId}"
+
+  AthenaTable:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !Ref AthenaDatabase
+      TableInput:
+        Name: !Sub "${AWS::StackName}-${AWS::AccountId}-table"
+        TableType: EXTERNAL_TABLE
+        StorageDescriptor:
+          Columns:
+            - Name: line_item_usage_account_id
+              Type: string
+            - Name: line_item_product_code
+              Type: string
+            - Name: line_item_line_item_type
+              Type: string
+            - Name: line_item_unblended_cost
+              Type: double
+            - Name: line_item_usage_start_date
+              Type: timestamp
+          Location: !Sub "s3://${AthenaBucket}/${AthenaDataPrefix}"
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+
+  SlackNotificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main.lambda_handler
+      Runtime: python3.13
+      CodeUri: ./budget_falcon
+      Role: !GetAtt SlackNotificationFunctionRole.Arn
+      Timeout: !Ref FunctionTimeout
+      MemorySize: !Ref FunctionMemorySize
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: !Sub "cron(${Schedule})"
+            Description: "Schedule using cron expression (UTC)"
+      Environment:
+        Variables:
+          ATHENA_DATABASE: !Ref AthenaDatabase
+          ATHENA_TABLE: !Sub "${AWS::StackName}-${AWS::AccountId}-table"
+          ATHENA_OUTPUT_URI: !Sub "s3://${AthenaBucket}/${AthenaOutputPrefix}"
+          ATHENA_LINE_ITEM_TYPES: !Ref AthenaLineItemTypes
+          SLACK_TOKEN: !Ref SlackToken
+          GOOGLE_SPREADSHEET_ID: !Ref GoogleSpreadsheetId
+          GOOGLE_SPREADSHEET_RANGE: !Ref GoogleSpreadsheetRange
+          QUERY_DAYS_RANGE: !Ref QueryDaysRange
+          TOP_N_SERVICES: !Ref TopNServices
+          MPLCONFIGDIR: "/tmp"
+
+  SlackNotificationFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${SlackNotificationFunction}"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  SlackNotificationFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref FunctionRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SlackNotificationFunctionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - athena:StartQueryExecution
+                  - athena:GetQueryExecution
+                  - athena:GetQueryResults
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub 'arn:aws:s3:::${AthenaBucket}'
+                  - !Sub 'arn:aws:s3:::${AthenaBucket}/*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: Allow
+                Action:
+                  - glue:GetDatabase
+                  - glue:GetDatabases
+                  - glue:GetTable
+                  - glue:GetTables
+                  - glue:GetPartition
+                  - glue:GetPartitions
+                Resource: "*"
+
+Outputs:
+  FunctionName:
+    Value: !Ref SlackNotificationFunction
+    Description: Name of the Lambda function
+  AthenaDatabaseName:
+    Value: !Ref AthenaDatabase
+    Description: Name of the Athena database for cost data
+  AthenaTableName:
+    Value: !Sub "${AWS::StackName}-${AWS::AccountId}-table"
+    Description: Name of the Athena table containing cost data
+  AthenaQueryOutputLocation:
+    Value: !Sub "s3://${AthenaBucket}/${AthenaOutputPrefix}"
+    Description: S3 location where Athena query results are stored
+  AthenaCostDataLocation:
+    Value: !Sub "s3://${AthenaBucket}/${AthenaDataPrefix}"
+    Description: S3 location where the Cost and Usage Report data is stored

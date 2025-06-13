@@ -1,0 +1,111 @@
+# AWSサービス名とカテゴリのマッピング（Athenaの列名→[サービス名, カテゴリ]）と色設定
+services:
+  # Compute
+  AmazonEC2: [EC2, Compute]
+  AmazonECS: [ECS, Compute]
+  AmazonEKS: [EKS, Compute]
+  AmazonLightsail: [Lightsail, Compute]
+  AWSLambda: [Lambda, Compute]
+  # Storage
+  AmazonECR: [ECR, Storage]
+  AmazonEFS: [EFS, Storage]
+  AmazonFSx: [FSx, Storage]
+  AmazonGlacier: [Glacier, Storage]
+  AmazonS3: [S3, Storage]
+  AWSDirectoryService: [Directory Service, Storage]
+  AWSTransfer: [Transfer, Storage]
+  # Database
+  AmazonDAX: [DAX, Database]
+  AmazonDocDB: [DocumentDB, Database]
+  AmazonDynamoDB: [DynamoDB, Database]
+  AmazonElastiCache: [ElastiCache, Database]
+  AmazonRDS: [RDS, Database]
+  AmazonRedshift: [Redshift, Database]
+  AmazonTimestream: [Timestream, Database]
+  # Networking
+  AmazonApiGateway: [API Gateway, Networking]
+  AmazonCloudFront: [CloudFront, Networking]
+  AmazonRoute53: [Route 53, Networking]
+  AmazonSES: [SES, Networking]
+  AmazonVPC: [VPC, Networking]
+  AWSDirectConnect: [Direct Connect, Networking]
+  AWSELB: [ELB, Networking]
+  AWSGlobalAccelerator: [Global Accelerator, Networking]
+  # Analytics
+  AmazonAthena: [Athena, Analytics]
+  AmazonES: [OpenSearch, Analytics]
+  AmazonKinesis: [Kinesis, Analytics]
+  AmazonKinesisAnalytics: [Kinesis Analytics, Analytics]
+  AmazonKinesisFirehose: [Kinesis Firehose, Analytics]
+  AmazonLocationService: [Location Service, Analytics]
+  AmazonMedicalImaging: [Medical Imaging, Analytics]
+  AmazonPersonalize: [Personalize, Analytics]
+  AmazonQuickSight: [QuickSight, Analytics]
+  AmazonRekognition: [Rekognition, Analytics]
+  AWSAppSync: [AppSync, Analytics]
+  AWSGlue: [Glue, Analytics]
+  ElasticMapReduce: [EMR, Analytics]
+  # Media
+  AmazonIVS: [IVS, Media]
+  AWSElementalMediaConvert: [MediaConvert, Media]
+  AWSElementalMediaLive: [MediaLive, Media]
+  AWSElementalMediaPackage: [MediaPackage, Media]
+  AWSElementalMediaStore: [MediaStore, Media]
+  AWSElementalMediaTailor: [MediaTailor, Media]
+  AWSMediaConnect: [MediaConnect, Media]
+  transcribe: [Transcribe, Media]
+  # Security
+  AmazonGuardDuty: [GuardDuty, Security]
+  AmazonInspectorV2: [Inspector v2, Security]
+  AWSIAMAccessAnalyzer: [IAM Access Analyzer, Security]
+  AWSSecretsManager: [Secrets Manager, Security]
+  AWSSecurityHub: [Security Hub, Security]
+  awswaf: [WAF, Security]
+  # Integration
+  AmazonPinpoint: [Pinpoint, Integration]
+  AmazonSNS: [SNS, Integration]
+  AmazonWorkMail: [WorkMail, Integration]
+  AWSQueueService: [SQS, Integration]
+  datapipeline: [Data Pipeline, Integration]
+  # Management & Monitoring
+  AmazonCloudWatch: [CloudWatch, Management]
+  AmazonStates: [States, Management]
+  AWSBackup: [Backup, Management]
+  AWSBudgets: [Budgets, Management]
+  AWSCloudShell: [CloudShell, Management]
+  AWSCloudTrail: [CloudTrail, Management]
+  AWSConfig: [Config, Management]
+  AWSCostExplorer: [Cost Explorer, Management]
+  AWSEvents: [AWS Events, Management]
+  awskms: [KMS, Management]
+  AWSSupportEnterprise: [Support Enterprise, Management]
+  AWSSystemsManager: [Systems Manager, Management]
+  # Developer Tools
+  AmazonChime: [Chime, DevTools]
+  AmazonWorkSpaces: [WorkSpaces, DevTools]
+  AWSAmplify: [Amplify, DevTools]
+  AWSAppRunner: [App Runner, DevTools]
+  AWSCodeArtifact: [CodeArtifact, DevTools]
+  AWSCodeCommit: [CodeCommit, DevTools]
+  AWSCodePipeline: [CodePipeline, DevTools]
+  AWSXRay: [X-Ray, DevTools]
+  CodeBuild: [CodeBuild, DevTools]
+
+# カテゴリごとの色設定
+colors:
+  Compute: "#ff9f1a"
+  Storage: "#70b500"
+  Database: "#0079bf"
+  Networking: "#51e898"
+  Analytics: "#00c2e0"
+  Media: "#ff78cb"
+  Security: "#c377e0"
+  Integration: "#f2d600"
+  Management: "#eb5a46"
+  DevTools: "#ffaaee"
+
+# その他の設定
+others:
+  label: "Others"
+  color: "#c4c9cc"
+  hatch: ""
